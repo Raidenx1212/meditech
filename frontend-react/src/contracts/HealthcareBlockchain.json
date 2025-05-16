@@ -1,0 +1,405 @@
+{
+  "address": "0x804847f6acA892Fa946F3f84EFdf42bA307C28BD",
+  "abi": [
+    {
+      "type": "constructor",
+      "payable": false,
+      "inputs": []
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "DoctorAuthorized",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId",
+          "indexed": true
+        },
+        {
+          "type": "address",
+          "name": "doctor",
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "DoctorRevoked",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId",
+          "indexed": true
+        },
+        {
+          "type": "address",
+          "name": "doctor",
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "HospitalAuthorized",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "hospital",
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "HospitalRevoked",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "hospital",
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "RecordAdded",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "recordId",
+          "indexed": true
+        },
+        {
+          "type": "string",
+          "name": "ipfsHash",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "RecordUpdated",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "recordId",
+          "indexed": true
+        },
+        {
+          "type": "string",
+          "name": "newIpfsHash",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "RecordVerified",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "recordId",
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "addPatientRecord",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        },
+        {
+          "type": "string",
+          "name": "ipfsHash"
+        },
+        {
+          "type": "string",
+          "name": "recordType"
+        },
+        {
+          "type": "string",
+          "name": "diagnosis"
+        },
+        {
+          "type": "string",
+          "name": "notes"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "authorizeDoctor",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        },
+        {
+          "type": "address",
+          "name": "doctor"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "authorizeHospital",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "address",
+          "name": "hospital"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "getAuthorizedDoctors",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address[]"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getPatientRecord",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        },
+        {
+          "type": "uint256",
+          "name": "recordId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "string",
+          "name": "ipfsHash"
+        },
+        {
+          "type": "address",
+          "name": "createdBy"
+        },
+        {
+          "type": "uint256",
+          "name": "timestamp"
+        },
+        {
+          "type": "bool",
+          "name": "isValid"
+        },
+        {
+          "type": "string",
+          "name": "recordType"
+        },
+        {
+          "type": "string",
+          "name": "diagnosis"
+        },
+        {
+          "type": "string",
+          "name": "notes"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getRecordCount",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "isDoctorAuthorized",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        },
+        {
+          "type": "address",
+          "name": "doctor"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "isHospitalAuthorized",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "address",
+          "name": "hospital"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "registerPatient",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "revokeDoctor",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        },
+        {
+          "type": "address",
+          "name": "doctor"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "revokeHospital",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "address",
+          "name": "hospital"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "updatePatientRecord",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        },
+        {
+          "type": "uint256",
+          "name": "recordId"
+        },
+        {
+          "type": "string",
+          "name": "newIpfsHash"
+        },
+        {
+          "type": "string",
+          "name": "newDiagnosis"
+        },
+        {
+          "type": "string",
+          "name": "newNotes"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "verifyRecord",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "patientId"
+        },
+        {
+          "type": "uint256",
+          "name": "recordId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ]
+}
