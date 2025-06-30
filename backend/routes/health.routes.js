@@ -8,14 +8,34 @@ router.get('/health', (req, res) => {
   
   res.json({
     status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
     mongodb: { 
       connected: isConnected,
       database: dbName,
       readyState: mongoose.connection.readyState,
-      host: isConnected ? mongoose.connection.host : 'unknown'
+      readyStateText: getReadyStateText(mongoose.connection.readyState),
+      host: isConnected ? mongoose.connection.host : 'unknown',
+      port: isConnected ? mongoose.connection.port : 'unknown'
+    },
+    env: {
+      mongodb_uri_set: !!process.env.MONGODB_URI,
+      node_env: process.env.NODE_ENV,
+      port: process.env.PORT
     }
   });
 });
+
+// Helper function to get readable ready state
+function getReadyStateText(state) {
+  const states = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  };
+  return states[state] || 'unknown';
+}
 
 // Add backward compatibility for the test-connection endpoint
 router.get('/db/test-connection', (req, res) => {

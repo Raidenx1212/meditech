@@ -1,11 +1,32 @@
 require('dotenv').config();
 const { ethers } = require('ethers');
-const contractArtifact = require('../artifacts/contracts/MedicalRecords.sol/MedicalRecords.json');
 
-// Debug logging
-console.log('Blockchain service environment check:');
-console.log('SEPOLIA_RPC_URL exists:', !!process.env.SEPOLIA_RPC_URL);
-console.log('ADMIN_PRIVATE_KEY exists:', !!process.env.ADMIN_PRIVATE_KEY);
+// Check if blockchain features are enabled
+const isBlockchainEnabled = process.env.ADMIN_PRIVATE_KEY && process.env.SEPOLIA_RPC_URL;
+
+if (!isBlockchainEnabled) {
+  console.log('Blockchain features are disabled. Set ADMIN_PRIVATE_KEY and SEPOLIA_RPC_URL to enable.');
+  console.log('ADMIN_PRIVATE_KEY exists:', !!process.env.ADMIN_PRIVATE_KEY);
+  console.log('SEPOLIA_RPC_URL exists:', !!process.env.SEPOLIA_RPC_URL);
+}
+
+let contractArtifact;
+let provider;
+let adminWallet;
+let contractInstance;
+let contractAddress;
+
+// Only load blockchain dependencies if enabled
+if (isBlockchainEnabled) {
+  try {
+    contractArtifact = require('../artifacts/contracts/MedicalRecords.sol/MedicalRecords.json');
+    provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
+    adminWallet = new ethers.Wallet(formatPrivateKey(process.env.ADMIN_PRIVATE_KEY), provider);
+  } catch (error) {
+    console.error('Error initializing blockchain service:', error.message);
+    console.log('Blockchain features will be disabled.');
+  }
+}
 
 // Helper function to ensure private key is properly formatted
 function formatPrivateKey(key) {
@@ -17,13 +38,11 @@ function formatPrivateKey(key) {
   return `0x${key}`;
 }
 
-const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
-const adminWallet = new ethers.Wallet(formatPrivateKey(process.env.ADMIN_PRIVATE_KEY), provider);
-
-let contractInstance;
-let contractAddress;
-
 async function deployContract() {
+  if (!isBlockchainEnabled) {
+    throw new Error('Blockchain features are disabled. Set ADMIN_PRIVATE_KEY and SEPOLIA_RPC_URL to enable.');
+  }
+  
   console.log('Deploying contract...');
   try {
     // Log the bytecode to verify it's correct
@@ -69,6 +88,10 @@ async function deployContract() {
 }
 
 async function getContractInstance() {
+  if (!isBlockchainEnabled) {
+    throw new Error('Blockchain features are disabled. Set ADMIN_PRIVATE_KEY and SEPOLIA_RPC_URL to enable.');
+  }
+  
   if (contractInstance) return contractInstance;
   if (process.env.CONTRACT_ADDRESS) {
     contractAddress = process.env.CONTRACT_ADDRESS;
@@ -84,6 +107,11 @@ async function getContractInstance() {
 }
 
 async function addRecord(patientAddress, ipfsHash) {
+  if (!isBlockchainEnabled) {
+    console.log('Blockchain features disabled - skipping record addition to blockchain');
+    return 'blockchain_disabled';
+  }
+  
   const contract = await getContractInstance();
   const tx = await contract.connect(adminWallet).addRecord(patientAddress, ipfsHash);
   await tx.wait();
@@ -92,6 +120,11 @@ async function addRecord(patientAddress, ipfsHash) {
 }
 
 async function getRecords(patientAddress) {
+  if (!isBlockchainEnabled) {
+    console.log('Blockchain features disabled - returning empty records');
+    return [];
+  }
+  
   const contract = await getContractInstance();
   console.log(`Fetching records for patient ${patientAddress} by admin/backend.`);
   const recordsRaw = await contract.connect(adminWallet).getRecords(patientAddress);
@@ -104,6 +137,11 @@ async function getRecords(patientAddress) {
 // New functions for document approval
 
 async function getDocumentApprovals(patientAddress) {
+  if (!isBlockchainEnabled) {
+    console.log('Blockchain features disabled - returning empty approvals');
+    return [];
+  }
+  
   const contract = await getContractInstance();
   console.log(`Fetching document approvals for patient ${patientAddress}`);
   const approvalsRaw = await contract.connect(adminWallet).getDocumentApprovals(patientAddress);
@@ -116,6 +154,11 @@ async function getDocumentApprovals(patientAddress) {
 }
 
 async function approveDocument(documentId) {
+  if (!isBlockchainEnabled) {
+    console.log('Blockchain features disabled - skipping document approval');
+    return 'blockchain_disabled';
+  }
+  
   const contract = await getContractInstance();
   console.log(`Approving document ${documentId} using admin wallet`);
   const tx = await contract.connect(adminWallet).approveDocument(documentId);
@@ -126,11 +169,18 @@ async function approveDocument(documentId) {
 
 // This function returns the contract ABI for frontend use
 function getContractABI() {
+  if (!isBlockchainEnabled) {
+    return [];
+  }
   return contractArtifact.abi;
 }
 
 // This function returns the contract address for frontend use
 function getDeployedContractAddress() {
+  if (!isBlockchainEnabled) {
+    return null;
+  }
+  
   if (!contractAddress && process.env.CONTRACT_ADDRESS) {
     contractAddress = process.env.CONTRACT_ADDRESS;
   }
@@ -148,5 +198,6 @@ module.exports = {
   getDocumentApprovals,
   getContractABI,
   getDeployedContractAddress,
-  approveDocument
+  approveDocument,
+  isBlockchainEnabled
 }; 

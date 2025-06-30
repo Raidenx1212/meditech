@@ -49,9 +49,43 @@ const finalURI = MONGODB_URI.includes('/meditech') ?
   MONGODB_URI : 
   MONGODB_URI.replace(/\/([^/?]*)(\?|$)/, '/meditech$2');
 
-mongoose.connect(finalURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => {
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch(err => console.error('MongoDB connection error:', err)); 
+// Enhanced MongoDB connection with better error handling
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(finalURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      bufferMaxEntries: 0, // Disable mongoose buffering
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      minPoolSize: 2, // Maintain at least 2 socket connections
+    });
+    
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    return conn;
+  } catch (error) {
+    console.error('MongoDB connection error:', error.message);
+    console.error('Full error:', error);
+    
+    // If it's a network error, provide helpful message
+    if (error.name === 'MongoNetworkError') {
+      console.error('Network error - check if MongoDB Atlas allows connections from Render');
+    }
+    
+    // Exit process with failure
+    process.exit(1);
+  }
+};
+
+// Connect to MongoDB and start server
+connectDB().then(() => {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}).catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+}); 
