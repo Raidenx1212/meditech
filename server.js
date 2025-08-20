@@ -30,36 +30,26 @@ app.get('/api', (req, res) => {
   res.json({ message: 'API is running' });
 });
 
-// Get MongoDB URI from environment or use a default
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://reaper:Rajesh123007@reaper.b6fszir.mongodb.net/meditech?retryWrites=true&w=majority&appName=reaper';
-
-if (!process.env.MONGODB_URI) {
-  console.log('⚠️  MONGODB_URI not set in environment variables. Using default connection string.');
-  console.log('⚠️  For production, set MONGODB_URI in your environment variables.');
+// Require MongoDB URI from environment only (no hardcoded fallback)
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI is not set. Please configure the environment variable.');
+  process.exit(1);
 }
 
-console.log('Connecting to MongoDB URI:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Hide credentials in logs
-
-// Make sure the URI points to meditech database
-const finalURI = MONGODB_URI.includes('/meditech') ? 
-  MONGODB_URI : 
+// Ensure DB name set to meditech
+const finalURI = MONGODB_URI.includes('/meditech') ?
+  MONGODB_URI :
   MONGODB_URI.replace(/\/([^/?]*)(\?|$)/, '/meditech$2');
 
 const PORT = process.env.PORT || 5000;
 
-mongoose.connect(finalURI, { 
-  useNewUrlParser: true, 
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-})
-.then(() => {
-  console.log('✅ MongoDB connected successfully');
-  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-})
-.catch(err => {
-  console.error('❌ MongoDB connection error:', err.message);
-  console.error('Please check your MONGODB_URI environment variable');
-  console.error('If using MongoDB Atlas, make sure your IP is whitelisted');
-  process.exit(1);
-});
+mongoose.connect(finalURI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('✅ MongoDB connected successfully');
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  })
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err.message);
+    process.exit(1);
+  });
