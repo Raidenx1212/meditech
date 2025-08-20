@@ -312,4 +312,57 @@ exports.downloadDocument = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// Get access logs for a medical record
+exports.getAccessLogs = async (req, res) => {
+  try {
+    const { recordId } = req.params;
+    
+    // Validate recordId format
+    if (!mongoose.Types.ObjectId.isValid(recordId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid record ID format' 
+      });
+    }
+    
+    // Find the medical record
+    const record = await MedicalRecord.findById(recordId);
+    if (!record) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Medical record not found' 
+      });
+    }
+    
+    // For now, return a mock access log since we don't have a dedicated access log model
+    // In a real implementation, you would have an AccessLog model
+    const accessLogs = [
+      {
+        id: '1',
+        recordId: recordId,
+        userId: req.user ? req.user._id : null,
+        userEmail: req.user ? req.user.email : 'Unknown',
+        action: 'view',
+        timestamp: new Date().toISOString(),
+        ipAddress: req.ip || 'Unknown',
+        userAgent: req.get('User-Agent') || 'Unknown'
+      }
+    ];
+    
+    return res.status(200).json({
+      success: true,
+      recordId: recordId,
+      accessLogs: accessLogs,
+      totalLogs: accessLogs.length
+    });
+  } catch (error) {
+    console.error('Error fetching access logs:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching access logs',
+      error: error.message
+    });
+  }
 }; 

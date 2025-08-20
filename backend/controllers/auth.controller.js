@@ -104,3 +104,44 @@ exports.checkEmailWallet = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 }; 
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.userId || req.user._id || req.user.id;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current password and new password are required.' });
+    }
+    
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    // Verify current password
+    if (!(await user.comparePassword(currentPassword))) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+    }
+    
+    // Update password
+    user.password = newPassword;
+    await user.save();
+    
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    // In a JWT-based system, logout is typically handled client-side
+    // by removing the token. However, we can implement server-side
+    // token blacklisting if needed in the future.
+    
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}; 

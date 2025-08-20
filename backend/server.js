@@ -17,6 +17,7 @@ const medicalDocRoutes = require('./routes/medicalDoc.routes');
 const doctorRoutes = require('./routes/doctor.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const blockchainRoutes = require('./routes/blockchain.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 const app = express();
 app.use(helmet());
@@ -34,6 +35,7 @@ app.use('/api/medical-docs', medicalDocRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/blockchain', blockchainRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api', (req, res) => {

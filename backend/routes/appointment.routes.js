@@ -23,4 +23,13 @@ router.put('/:id', protect, checkAppointmentAccess, appointmentController.update
 // Update appointment status
 router.patch('/:id/status', protect, checkAppointmentAccess, appointmentController.updateAppointmentStatus);
 
+// Get available appointment slots
+router.get('/available-slots', protect, appointmentController.getAvailableSlots);
+
+// Get appointments for a specific patient
+router.get('/patient/:patientId', protect, appointmentController.getAppointmentsByPatient);
+
+// Refresh patient info for an appointment
+router.get('/:appointmentId/refresh-patient-info', protect, appointmentController.refreshPatientInfo);
+
 module.exports = router; 

@@ -34,6 +34,15 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Special fields for exclusive doctor appointments
+  isExclusiveAppointment: {
+    type: Boolean,
+    default: false
+  },
+  doctorSpecialId: {
+    type: String,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -40,10 +40,31 @@ const timeSlots = [
 ];
 
 const doctors = [
-  { id: '682506236856a6bd9bea1a3e', name: 'Dr. Rohan' },
-  { id: '6820fd7e38d3faf3be4c96c0', name: 'Dr. John' },
-  { id: '6820fdef38d3faf3be4c96d0', name: 'Dr. Monk' },
-  { id: '6827020f1244138c83873c7c', name: 'Dr. Suraj' },
+  { 
+    id: '682506236856a6bd9bea1a3e', 
+    name: 'Dr. Rohan',
+    specialId: 'rohan_doctor'
+  },
+  { 
+    id: '6820fd7e38d3faf3be4c96c0', 
+    name: 'Dr. John',
+    specialId: 'john_doctor'
+  },
+  { 
+    id: '6820fdef38d3faf3be4c96d0', 
+    name: 'Dr. Monk',
+    specialId: 'monk_doctor'
+  },
+  { 
+    id: '6827020f1244138c83873c7c', 
+    name: 'Dr. Suraj',
+    specialId: 'suraj_doctor'
+  },
+  { 
+    id: '68a4ce7c06a058012bda4d01', 
+    name: 'Dr. Raiden',
+    specialId: 'raiden_doctor'
+  },
   // Add other doctors here with their real MongoDB _id if available
 ];
 
@@ -193,18 +214,26 @@ const BookAppointment = () => {
         userInfo = {};
       }
       
+      // Get doctor info to check if it's an exclusive doctor
+      const selectedDoctorInfo = doctors.find(doc => doc.id === selectedDoctor);
+      const isExclusiveDoctor = !!(selectedDoctorInfo && selectedDoctorInfo.specialId);
+      
       // Create appointment data
       const appointmentData = {
         doctorId: selectedDoctor,
         doctorName: getDoctorNameById(selectedDoctor),
-        patientId: userInfo.id || userInfo._id || 'patient1', // Fallback ID if user data is missing
+        patientId: userInfo.id || userInfo._id,
         patientName: getPatientName(userInfo),
         date: slot.date,
         time: slot.time,
-        status: 'scheduled'
+        status: 'scheduled',
+        // Add special flag for exclusive doctor appointments
+        isExclusiveAppointment: isExclusiveDoctor,
+        doctorSpecialId: isExclusiveDoctor ? selectedDoctorInfo.specialId : null
       };
       
       console.log('Creating appointment with data:', appointmentData);
+      console.log('Is exclusive appointment:', isExclusiveDoctor);
       
       // Book appointment through the API
       const response = await AppointmentService.createAppointment(appointmentData);
@@ -231,6 +260,8 @@ const BookAppointment = () => {
         date: appointmentData.date,
         time: appointmentData.time,
         status: appointmentData.status,
+        isExclusiveAppointment: isExclusiveDoctor,
+        doctorSpecialId: appointmentData.doctorSpecialId,
         createdAt: new Date().toISOString()
       };
       
@@ -241,11 +272,12 @@ const BookAppointment = () => {
         categorizeAppointments(updatedAppointments);
       }
       
-      // Update UI
-      setSlots(slots.filter(s => s.id !== id));
+      // Show standard success message
+      const successMessage = `Appointment scheduled with ${slot.doctor} on ${slot.date} at ${slot.time}. Awaiting doctor confirmation.`;
+      
       setSnackbar({ 
         open: true, 
-        message: `Appointment scheduled with ${slot.doctor} on ${slot.date} at ${slot.time}. Awaiting doctor confirmation.` 
+        message: successMessage
       });
     } catch (err) {
       if (err.response && err.response.status === 409) {
@@ -291,18 +323,26 @@ const BookAppointment = () => {
         userInfo = {};
       }
       
+      // Get doctor info to check if it's an exclusive doctor
+      const selectedDoctorInfo = doctors.find(doc => doc.id === selectedDoctor);
+      const isExclusiveDoctor = !!(selectedDoctorInfo && selectedDoctorInfo.specialId);
+      
       // Create appointment data
       const appointmentData = {
         doctorId: selectedDoctor,
         doctorName: getDoctorNameById(selectedDoctor),
-        patientId: userInfo.id || userInfo._id || 'patient1', // Fallback ID if user data is missing
+        patientId: userInfo.id || userInfo._id,
         patientName: getPatientName(userInfo),
         date: selectedDate,
         time: selectedTime,
-        status: 'scheduled'
+        status: 'scheduled',
+        // Add special flag for exclusive doctor appointments
+        isExclusiveAppointment: isExclusiveDoctor,
+        doctorSpecialId: isExclusiveDoctor ? selectedDoctorInfo.specialId : null
       };
       
       console.log('Creating appointment with data:', appointmentData);
+      console.log('Is exclusive appointment:', isExclusiveDoctor);
       
       // Make the API call to book the appointment
       const response = await AppointmentService.createAppointment(appointmentData);
@@ -329,6 +369,8 @@ const BookAppointment = () => {
         date: appointmentData.date,
         time: appointmentData.time,
         status: appointmentData.status,
+        isExclusiveAppointment: isExclusiveDoctor,
+        doctorSpecialId: appointmentData.doctorSpecialId,
         createdAt: new Date().toISOString()
       };
       
@@ -339,10 +381,13 @@ const BookAppointment = () => {
         categorizeAppointments(updatedAppointments);
       }
       
+      // Show standard success message
+      const successMessage = `Appointment successfully scheduled with ${getDoctorNameById(selectedDoctor)} on ${selectedDate} at ${selectedTime}. Awaiting doctor confirmation.`;
+      
       // Update the UI
       setSnackbar({ 
         open: true, 
-        message: `Appointment successfully scheduled with ${getDoctorNameById(selectedDoctor)} on ${selectedDate} at ${selectedTime}. Awaiting doctor confirmation.` 
+        message: successMessage
       });
       
       // Set booking confirmed state for UI feedback
@@ -391,9 +436,17 @@ const BookAppointment = () => {
         userInfo = {};
       }
       
-      // Use a default patient ID if no user info is available
-      const patientId = userInfo.id || 'patient1';
-      console.log('Fetching appointments for patient:', patientId);
+      // Check if user is properly authenticated
+      if (!userInfo || (!userInfo.id && !userInfo._id)) {
+        console.log('No authenticated user found, skipping appointment fetch');
+        setUserAppointments([]);
+        categorizeAppointments([]);
+        return;
+      }
+      
+      // Use the actual user ID
+      const patientId = userInfo.id || userInfo._id;
+      console.log('Fetching appointments for authenticated patient:', patientId);
       
       // Call the API without fallback to mock data
       const response = await AppointmentService.getAppointmentsByPatient(patientId);
@@ -618,8 +671,7 @@ const BookAppointment = () => {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            You are about to schedule an appointment with {getDoctorNameById(selectedDoctor)} on {selectedDate} at {selectedTime}.
-            The appointment will be pending until confirmed by the doctor. You will be notified once your appointment is confirmed.
+            You are about to schedule an appointment with {getDoctorNameById(selectedDoctor)} on {selectedDate} at {selectedTime}. The appointment will be pending until confirmed by the doctor. You will be notified once your appointment is confirmed.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

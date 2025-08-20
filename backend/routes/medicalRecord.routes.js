@@ -81,4 +81,7 @@ router.delete('/:id', authMiddleware.protect, medicalRecordController.deleteMedi
 // Download a document
 router.get('/:recordId/documents/:documentId/download', authMiddleware.protect, medicalRecordController.downloadDocument);
 
+// Get access logs for a medical record
+router.get('/:recordId/access-logs', authMiddleware.protect, medicalRecordController.getAccessLogs);
+
 module.exports = router; 
