@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const bodyParser = require('body-parser');
 const path = require('path');
 
+// Import Routes
 const authRoutes = require('./routes/auth.routes');
 const fileRoutes = require('./routes/file.routes');
 const healthRoutes = require('./routes/health.routes');
@@ -20,10 +21,16 @@ const blockchainRoutes = require('./routes/blockchain.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 
 const app = express();
+
+// Security & Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "https://meditech-one.vercel.app", // ✅ Allow frontend
+  credentials: true
+}));
 app.use(bodyParser.json());
 
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api', fileRoutes);
 app.use('/api', healthRoutes);
@@ -38,78 +45,68 @@ app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// API status route
 app.get('/api', (req, res) => {
-  res.json({ message: 'API is running' });
+  res.json({ message: '✅ MediTech API is running' });
 });
 
-// Get MongoDB URI from environment - NO HARDCODED CREDENTIALS
+// Root route for Render homepage
+app.get('/', (req, res) => {
+  res.send('🚀 MediTech Backend is running! Visit /api for API routes.');
+});
+
+// MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   console.error('❌ MONGODB_URI environment variable is not set!');
-  console.error('Please set MONGODB_URI in your environment variables.');
   process.exit(1);
 }
 
-// Enhanced MongoDB connection with better error handling for production
 const connectDB = async () => {
   try {
-    console.log('Attempting to connect to MongoDB...');
-    console.log('Environment:', process.env.NODE_ENV || 'development');
-    console.log('MongoDB URI set:', !!process.env.MONGODB_URI);
-    
-    // Clean up the URI - remove any extra parameters that might cause issues
+    console.log('🔄 Attempting to connect to MongoDB...');
+
     let cleanURI = MONGODB_URI;
-    
-    // Ensure we're connecting to the right database
     if (!cleanURI.includes('/meditech')) {
       cleanURI = cleanURI.replace(/\/([^/?]*)(\?|$)/, '/meditech$2');
     }
-    
-    // Remove appName parameter as it can cause issues in production
     cleanURI = cleanURI.replace(/&appName=[^&]*/, '');
-    
-    console.log('Final MongoDB URI:', cleanURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Hide credentials in logs
-    
+
+    console.log('🔗 Final MongoDB URI (sanitized):', cleanURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
+
     const conn = await mongoose.connect(cleanURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000, // Increased timeout for production
-      socketTimeoutMS: 45000,
-      maxPoolSize: 5, // Reduced for Render's free tier
-      minPoolSize: 1,
+      serverSelectionTimeoutMS: 30000, // Increased timeout
+      socketTimeoutMS: 60000, // Increased socket timeout
+      maxPoolSize: 10, // Increased pool size
+      minPoolSize: 2,
       retryWrites: true,
-      w: 'majority'
+      w: 'majority',
+      bufferCommands: true,
+      bufferMaxEntries: 0
     });
+
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(`📊 Database: ${conn.connection.db.databaseName}`);
+    console.log(`🔌 Connection State: ${conn.connection.readyState}`);
     
-    console.log(`✅ MongoDB Connected Successfully!`);
-    console.log(`   Host: ${conn.connection.host}`);
-    console.log(`   Database: ${conn.connection.name}`);
-    console.log(`   Ready State: ${conn.connection.readyState}`);
+    // Test the connection with a simple operation
+    await conn.connection.db.admin().ping();
+    console.log('🏓 Database ping successful');
     
     return conn;
   } catch (error) {
-    console.error('❌ MongoDB connection failed!');
-    console.error('Error type:', error.name);
-    console.error('Error message:', error.message);
+    console.error('❌ MongoDB connection failed:', error.message);
+    console.error('🔍 Error details:', {
+      name: error.name,
+      code: error.code,
+      stack: error.stack
+    });
     
-    // Provide specific guidance based on error type
-    if (error.name === 'MongoNetworkError') {
-      console.error('🔧 Network Error - Possible solutions:');
-      console.error('   1. Check MongoDB Atlas Network Access (allow 0.0.0.0/0)');
-      console.error('   2. Verify connection string format');
-      console.error('   3. Check if MongoDB Atlas cluster is running');
-    } else if (error.name === 'MongoParseError') {
-      console.error('🔧 Parse Error - Check connection string format');
-    } else if (error.name === 'MongoServerSelectionError') {
-      console.error('🔧 Server Selection Error - Check network access and credentials');
-    }
-    
-    console.error('Full error details:', error);
-    
-    // Don't exit immediately in production, let the app try to start
     if (process.env.NODE_ENV === 'production') {
-      console.error('⚠️  Continuing without database connection in production...');
+      console.error('⚠️  Continuing without DB in production...');
       return null;
     } else {
       process.exit(1);
@@ -117,32 +114,47 @@ const connectDB = async () => {
   }
 };
 
-// Connect to MongoDB and start server
+// Add connection event listeners
+mongoose.connection.on('connected', () => {
+  console.log('✅ Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️  Mongoose disconnected from MongoDB');
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  await mongoose.connection.close();
+  console.log('🔄 MongoDB connection closed through app termination');
+  process.exit(0);
+});
+
+// Start Server
 connectDB().then((conn) => {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    
     if (conn) {
       console.log(`✅ Database: Connected to MongoDB`);
     } else {
       console.log(`⚠️  Database: Not connected - some features may not work`);
     }
-    
     console.log(`📊 Health check available at: http://localhost:${PORT}/api/health`);
   });
 }).catch(err => {
   console.error('❌ Failed to start server:', err);
-  
-  // In production, try to start server anyway for debugging
   if (process.env.NODE_ENV === 'production') {
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`🚀 Server started on port ${PORT} (without database)`);
-      console.log(`📊 Health check available at: http://localhost:${PORT}/api/health`);
     });
   } else {
     process.exit(1);
   }
-}); 
+});

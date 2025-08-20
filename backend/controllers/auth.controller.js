@@ -11,25 +11,68 @@ const generateToken = (user) => {
 
 exports.register = async (req, res) => {
   try {
+    console.log('🔄 Registration attempt started');
+    
     const { email, password, walletAddress, firstName, lastName, role } = req.body;
     if (!email || !password || !walletAddress || !firstName || !lastName) {
       return res.status(400).json({ success: false, message: 'Email, password, wallet address, first name, and last name are required.' });
     }
+    
     // Validate Ethereum address
     if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
       return res.status(400).json({ success: false, message: 'Invalid wallet address format.' });
     }
-    if (await User.findOne({ email })) {
+    
+    console.log('🔍 Checking for existing user with email:', email);
+    const existingUserByEmail = await User.findOne({ email });
+    if (existingUserByEmail) {
       return res.status(400).json({ success: false, message: 'Email already in use.' });
     }
-    if (await User.findOne({ walletAddress })) {
+    
+    console.log('🔍 Checking for existing user with wallet:', walletAddress);
+    const existingUserByWallet = await User.findOne({ walletAddress });
+    if (existingUserByWallet) {
       return res.status(400).json({ success: false, message: 'Wallet address already registered.' });
     }
+    
+    console.log('✅ Creating new user');
     const user = new User({ email, password, walletAddress, firstName, lastName, role: role || 'patient' });
     await user.save();
-    res.status(201).json({ success: true, message: 'User registered' });
+    
+    console.log('✅ User registered successfully:', user._id);
+    res.status(201).json({ success: true, message: 'User registered successfully' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error('❌ Registration error:', err);
+    console.error('🔍 Error details:', {
+      name: err.name,
+      code: err.code,
+      message: err.message,
+      stack: err.stack
+    });
+    
+    // Check if it's a MongoDB connection error
+    if (err.name === 'MongoNetworkError' || err.name === 'MongoServerSelectionError') {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Database is not accessible. Please try again later or contact support.',
+        error: 'DATABASE_CONNECTION_ERROR'
+      });
+    }
+    
+    // Check if it's a validation error
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Validation error: ' + Object.values(err.errors).map(e => e.message).join(', '),
+        error: 'VALIDATION_ERROR'
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Registration failed. Please try again.',
+      error: 'INTERNAL_SERVER_ERROR'
+    });
   }
 };
 
