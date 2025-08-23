@@ -3,7 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const bodyParser = require('body-parser');
 const path = require('path');
 
 // Import Routes
@@ -28,7 +27,8 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || "https://meditech-one.vercel.app", // ✅ Allow frontend
   credentials: true
 }));
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -82,16 +82,13 @@ const connectDB = async () => {
     console.log('🔗 Final MongoDB URI (sanitized):', cleanURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
 
     const conn = await mongoose.connect(cleanURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       serverSelectionTimeoutMS: 30000, // Increased timeout
       socketTimeoutMS: 60000, // Increased socket timeout
       maxPoolSize: 10, // Increased pool size
       minPoolSize: 2,
       retryWrites: true,
       w: 'majority',
-      bufferCommands: true,
-      bufferMaxEntries: 0
+      bufferCommands: true
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);

@@ -23,7 +23,7 @@ router.post('/add-record', async (req, res) => {
   if (!patientAddress || !ipfsHash) {
     return res.status(400).json({ success: false, message: 'Patient address and IPFS hash are required.' });
   }
-  if (!ethers.utils.isAddress(patientAddress)) {
+  if (!ethers.isAddress(patientAddress)) {
     return res.status(400).json({ success: false, message: 'Invalid patient address format.' });
   }
 
@@ -40,7 +40,7 @@ router.post('/add-record', async (req, res) => {
 router.get('/records/:patientAddress', async (req, res) => {
   const { patientAddress } = req.params;
 
-  if (!ethers.utils.isAddress(patientAddress)) {
+  if (!ethers.isAddress(patientAddress)) {
     return res.status(400).json({ success: false, message: 'Invalid patient address format.' });
   }
 
@@ -112,7 +112,7 @@ router.get('/contract-status', async (req, res) => {
 router.get('/approvals/:patientAddress', async (req, res) => {
   const { patientAddress } = req.params;
 
-  if (!ethers.utils.isAddress(patientAddress)) {
+  if (!ethers.isAddress(patientAddress)) {
     return res.status(400).json({ success: false, message: 'Invalid patient address format.' });
   }
 
