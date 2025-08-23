@@ -82,13 +82,16 @@ const connectDB = async () => {
     console.log('🔗 Final MongoDB URI (sanitized):', cleanURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
 
     const conn = await mongoose.connect(cleanURI, {
-      serverSelectionTimeoutMS: 30000, // Increased timeout
-      socketTimeoutMS: 60000, // Increased socket timeout
-      maxPoolSize: 10, // Increased pool size
-      minPoolSize: 2,
+      serverSelectionTimeoutMS: 60000, // Increased to 60 seconds for Render
+      socketTimeoutMS: 60000,
+      connectTimeoutMS: 60000, // Add explicit connect timeout
+      maxPoolSize: 10,
+      minPoolSize: 1, // Reduced minimum for cloud deployment
       retryWrites: true,
       w: 'majority',
-      bufferCommands: true
+      bufferCommands: true,
+      heartbeatFrequencyMS: 10000, // More frequent heartbeat
+      maxIdleTimeMS: 30000 // Close connections after 30s idle
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);

@@ -2,12 +2,28 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-router.get('/health', (req, res) => {
+router.get('/health', async (req, res) => {
   const isConnected = mongoose.connection.readyState === 1;
   const dbName = isConnected ? mongoose.connection.db.databaseName : 'not connected';
   
-  res.json({
-    status: 'ok',
+  let dbPingResult = null;
+  let dbError = null;
+  
+  // Perform active database ping test if connected
+  if (isConnected) {
+    try {
+      const startTime = Date.now();
+      await mongoose.connection.db.admin().ping();
+      const pingTime = Date.now() - startTime;
+      dbPingResult = { success: true, responseTime: `${pingTime}ms` };
+    } catch (error) {
+      dbPingResult = { success: false, error: error.message };
+      dbError = error.message;
+    }
+  }
+  
+  const healthStatus = {
+    status: isConnected && (!dbPingResult || dbPingResult.success) ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     mongodb: { 
@@ -16,14 +32,20 @@ router.get('/health', (req, res) => {
       readyState: mongoose.connection.readyState,
       readyStateText: getReadyStateText(mongoose.connection.readyState),
       host: isConnected ? mongoose.connection.host : 'unknown',
-      port: isConnected ? mongoose.connection.port : 'unknown'
+      port: isConnected ? mongoose.connection.port : 'unknown',
+      ping: dbPingResult,
+      error: dbError
     },
     env: {
       mongodb_uri_set: !!process.env.MONGODB_URI,
       node_env: process.env.NODE_ENV,
       port: process.env.PORT
     }
-  });
+  };
+  
+  // Return appropriate HTTP status
+  const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(healthStatus);
 });
 
 // Helper function to get readable ready state
