@@ -66,11 +66,17 @@ if (!MONGODB_URI) {
 const connectDB = async () => {
   try {
     console.log('🔄 Attempting to connect to MongoDB...');
+    console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
 
     let cleanURI = MONGODB_URI;
-    if (!cleanURI.includes('/meditech')) {
+    
+    // Ensure we're using the correct database name
+    if (!cleanURI.includes('/meditech') && !cleanURI.includes('/test')) {
+      // If no database specified, default to meditech
       cleanURI = cleanURI.replace(/\/([^/?]*)(\?|$)/, '/meditech$2');
+      console.log('📝 No database specified, defaulting to /meditech');
     }
+    
     cleanURI = cleanURI.replace(/&appName=[^&]*/, '');
 
     console.log('🔗 Final MongoDB URI (sanitized):', cleanURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
@@ -96,6 +102,10 @@ const connectDB = async () => {
     await conn.connection.db.admin().ping();
     console.log('🏓 Database ping successful');
     
+    // List collections to verify database access
+    const collections = await conn.connection.db.listCollections().toArray();
+    console.log('📚 Available collections:', collections.map(c => c.name));
+    
     return conn;
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
@@ -104,6 +114,17 @@ const connectDB = async () => {
       code: error.code,
       stack: error.stack
     });
+    
+    // Provide specific error messages for common issues
+    if (error.name === 'MongoServerSelectionError') {
+      console.error('🚨 Network/Connection Issue: Check MongoDB Atlas Network Access');
+    } else if (error.name === 'MongoParseError') {
+      console.error('🚨 URI Format Issue: Check MONGODB_URI format');
+    } else if (error.message.includes('Authentication failed')) {
+      console.error('🚨 Authentication Issue: Check username/password in MONGODB_URI');
+    } else if (error.message.includes('ECONNREFUSED')) {
+      console.error('🚨 Connection Refused: Check if MongoDB service is running');
+    }
     
     if (process.env.NODE_ENV === 'production') {
       console.error('⚠️  Continuing without DB in production...');
