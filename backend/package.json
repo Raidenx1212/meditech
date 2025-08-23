@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon server.js",
+    "test": "node test-db.js",
+    "test:db": "node test-db.js"
   },
   "engines": {
     "node": ">=18.0.0"

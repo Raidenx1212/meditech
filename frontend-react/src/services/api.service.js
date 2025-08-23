@@ -1218,8 +1218,8 @@ const testMongoDBConnection = async () => {
   try {
     console.log('Testing MongoDB connection...');
     
-    // Use health endpoint instead of test-connection
-    const healthUrl = 'http://localhost:5000/api/health';
+    // Use the same BACKEND_URL that's configured for the app
+    const healthUrl = `${BACKEND_URL}/api/health`;
     console.log('Using endpoint:', healthUrl);
     
     try {
@@ -1256,7 +1256,7 @@ const testMongoDBConnection = async () => {
       
       // Try collections endpoint as a secondary check
       try {
-        const collectionsUrl = 'http://localhost:5000/api/db/collections';
+        const collectionsUrl = `${BACKEND_URL}/api/db/collections`;
         const collectionsResponse = await axios.get(collectionsUrl, { timeout: 3000 });
         console.log('Collections check response:', collectionsResponse.data);
         
