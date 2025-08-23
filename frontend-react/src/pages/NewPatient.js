@@ -227,7 +227,8 @@ const NewPatient = () => {
       
       // Test backend connectivity before attempting to create patient
       try {
-        const testResponse = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/health`, {
+        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+        const testResponse = await axios.get(`${backendUrl.replace(/\/$/, '')}/health`, {
           timeout: 3000
         });
         console.log('Backend connectivity test:', testResponse.status === 200 ? 'SUCCESS' : 'FAILED');

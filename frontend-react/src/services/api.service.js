@@ -48,7 +48,7 @@ const checkBackendConnection = async () => {
     console.log('Checking backend connection...');
     const response = await axios({
       method: 'GET',
-      url: `${BACKEND_URL}/health`,
+      url: `${BACKEND_URL.replace(/\/$/, '')}/health`,
       timeout: 5000,
       headers: {
         'Accept': 'application/json',

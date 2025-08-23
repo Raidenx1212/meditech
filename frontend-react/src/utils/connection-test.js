@@ -11,7 +11,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'
 export const testBackendConnection = async () => {
   console.log('Testing backend connection...');
   try {
-    const response = await axios.get(`${BACKEND_URL}/health`, {
+    const response = await axios.get(`${BACKEND_URL.replace(/\/$/, '')}/health`, {
       timeout: 5000,
       headers: {
         'Accept': 'application/json',
