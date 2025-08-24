@@ -23,9 +23,35 @@ const app = express();
 
 // Security & Middleware
 app.use(helmet());
+// CORS configuration for both development and production
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://meditech-one.vercel.app",
+  "https://meditech-healthcare.vercel.app",
+  process.env.FRONTEND_URL
+].filter(Boolean); // Remove any undefined values
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "https://meditech-one.vercel.app", // ✅ Allow frontend
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // For development, allow any localhost origin
+    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    
+    console.log('CORS blocked origin:', origin);
+    const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+    return callback(new Error(msg), false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -72,9 +98,13 @@ const connectDB = async () => {
     
     // Ensure we're using the correct database name
     if (!cleanURI.includes('/meditech') && !cleanURI.includes('/test')) {
-      // If no database specified, default to meditech
-      cleanURI = cleanURI.replace(/\/([^/?]*)(\?|$)/, '/meditech$2');
-      console.log('📝 No database specified, defaulting to /meditech');
+      // If no database specified, add meditech before query parameters
+      if (cleanURI.includes('?')) {
+        cleanURI = cleanURI.replace('/?', '/meditech?');
+      } else {
+        cleanURI = cleanURI + (cleanURI.endsWith('/') ? 'meditech' : '/meditech');
+      }
+      console.log('📝 No database specified, defaulting to meditech database');
     }
     
     cleanURI = cleanURI.replace(/&appName=[^&]*/, '');
