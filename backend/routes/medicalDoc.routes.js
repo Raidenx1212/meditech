@@ -19,4 +19,7 @@ router.get('/rejected', protect, ctrl.getRejectedDocs);
 // Doctor views their own confirmed (approved) documents
 router.get('/doctor/confirmed', protect, ctrl.getDoctorConfirmedDocs);
 
-module.exports = router; 
+// Download medical document file
+router.get('/:id/download', protect, ctrl.downloadMedicalDoc);
+
+module.exports = router;

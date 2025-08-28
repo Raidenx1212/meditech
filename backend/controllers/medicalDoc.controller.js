@@ -5,17 +5,48 @@ const blockchainService = require('../services/blockchain.service');
 // Doctor uploads document (only for confirmed appointments)
 exports.uploadDoc = async (req, res) => {
   try {
-    const { appointmentId, fileUrl, description } = req.body;
+    const { appointmentId, fileId, description } = req.body;
     const doctorId = req.user.userId;
-    // Check appointment exists and is confirmed
-    const appointment = await Appointment.findOne({ _id: appointmentId, doctorId, status: 'confirmed' });
-    if (!appointment) {
-      return res.status(400).json({ success: false, message: 'Appointment not found or not confirmed.' });
+    
+    console.log('MedicalDoc upload attempt:', { appointmentId, fileId, doctorId });
+    
+    // Check if file was uploaded
+    if (!fileId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'File ID is required. Please upload a file first using /api/upload' 
+      });
     }
+    
+    // Check appointment exists and is confirmed
+    const appointment = await Appointment.findOne({ 
+      _id: appointmentId, 
+      doctorId, 
+      status: 'confirmed' 
+    });
+    
+    if (!appointment) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Appointment not found or not confirmed.' 
+      });
+    }
+    
     const patientId = appointment.patientId;
-    const doc = await MedicalDoc.create({ appointmentId, doctorId, patientId, fileUrl, description });
+    
+    // Create medical document record with fileId instead of fileUrl
+    const doc = await MedicalDoc.create({ 
+      appointmentId, 
+      doctorId, 
+      patientId, 
+      fileId, // Use fileId to reference the uploaded file
+      description 
+    });
+    
+    console.log('Medical document created:', doc._id);
     res.status(201).json({ success: true, doc });
   } catch (err) {
+    console.error('Medical doc upload error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -24,7 +55,9 @@ exports.uploadDoc = async (req, res) => {
 exports.getPendingDocs = async (req, res) => {
   try {
     const patientId = req.user.userId;
-    const docs = await MedicalDoc.find({ patientId, status: 'pending' });
+    const docs = await MedicalDoc.find({ patientId, status: 'pending' })
+      .populate('fileId', 'fileName mimetype uploadedAt')
+      .populate('doctorId', 'firstName lastName');
     res.json({ success: true, docs });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -92,7 +125,9 @@ exports.updateDocStatus = async (req, res) => {
 exports.getApprovedDocs = async (req, res) => {
   try {
     const patientId = req.user.userId;
-    const docs = await MedicalDoc.find({ patientId, status: 'approved' });
+    const docs = await MedicalDoc.find({ patientId, status: 'approved' })
+      .populate('fileId', 'fileName mimetype uploadedAt')
+      .populate('doctorId', 'firstName lastName');
     res.json({ success: true, docs });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -103,7 +138,9 @@ exports.getApprovedDocs = async (req, res) => {
 exports.getRejectedDocs = async (req, res) => {
   try {
     const patientId = req.user.userId;
-    const docs = await MedicalDoc.find({ patientId, status: 'rejected' });
+    const docs = await MedicalDoc.find({ patientId, status: 'rejected' })
+      .populate('fileId', 'fileName mimetype uploadedAt')
+      .populate('doctorId', 'firstName lastName');
     res.json({ success: true, docs });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -116,9 +153,49 @@ exports.getDoctorConfirmedDocs = async (req, res) => {
     const doctorId = req.user.userId;
     // Find all approved docs uploaded by this doctor
     const docs = await MedicalDoc.find({ doctorId, status: 'approved' })
-      .populate('patientId', 'firstName lastName');
+      .populate('patientId', 'firstName lastName')
+      .populate('fileId', 'fileName mimetype uploadedAt');
     res.json({ success: true, docs });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-}; 
+};
+
+// Download medical document file
+exports.downloadMedicalDoc = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    
+    // Find the medical document
+    const medDoc = await MedicalDoc.findById(id).populate('fileId');
+    
+    if (!medDoc) {
+      return res.status(404).json({ success: false, message: 'Medical document not found' });
+    }
+    
+    // Check if user has permission to download (patient, doctor, or admin)
+    const isAuthorized = medDoc.patientId === userId || 
+                        medDoc.doctorId === userId || 
+                        req.user.role === 'admin';
+                        
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    
+    // Get the file
+    const file = medDoc.fileId;
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+    
+    // Send the file
+    res.set('Content-Type', file.mimetype);
+    res.set('Content-Disposition', `attachment; filename="${file.fileName}"`);
+    res.send(file.data);
+    
+  } catch (err) {
+    console.error('Download medical doc error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
