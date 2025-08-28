@@ -7,14 +7,6 @@ const { v4: uuidv4 } = require('uuid');
 const medicalRecordController = require('../backend/controllers/medicalRecord.controller');
 const authMiddleware = require('../backend/middleware/auth.middleware');
 
-// <--- Add these debug lines
-console.log('--- DEBUG START ---');
-console.log('Type of medicalRecordController:', typeof medicalRecordController);
-console.log('Keys in medicalRecordController:', medicalRecordController ? Object.keys(medicalRecordController) : 'medicalRecordController is undefined/null');
-console.log('medicalRecordController.getMedicalRecord:', medicalRecordController ? medicalRecordController.getMedicalRecord : 'medicalRecordController is undefined/null');
-console.log('Type of medicalRecordController.getMedicalRecord:', medicalRecordController ? typeof medicalRecordController.getMedicalRecord : 'medicalRecordController is undefined/null');
-console.log('--- DEBUG END ---');
-// --- End of debug lines --->
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({

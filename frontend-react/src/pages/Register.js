@@ -27,7 +27,7 @@ import {
   AccountBalanceWallet
 } from '@mui/icons-material';
 import { AuthService, testMongoDBConnection } from '../services/api.service';
-import MetaMaskAuth from 'components/common/MetaMaskAuth';
+import MetaMaskAuth from '../components/common/MetaMaskAuth';
 import Web3Service from '../services/web3.service';
 import { maskEmail } from '../utils/formatUtils';
 

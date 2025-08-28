@@ -28,9 +28,10 @@ const allowedOrigins = [
   "http://localhost:3000",
   "https://meditech-one.vercel.app",
   "https://meditech-healthcare.vercel.app",
-  process.env.FRONTEND_URL
-].filter(Boolean); // Remove any undefined values
-
+  "https://meditech-frontend.vercel.app",
+  "https://meditech-blockchain.vercel.app",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, etc.)
@@ -74,6 +75,44 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // API status route
 app.get('/api', (req, res) => {
   res.json({ message: '✅ MediTech API is running' });
+});
+
+// Health endpoint for deployment services (root level)
+app.get('/health', async (req, res) => {
+  const mongoose = require('mongoose');
+  const isConnected = mongoose.connection.readyState === 1;
+  const dbName = isConnected ? mongoose.connection.db.databaseName : 'not connected';
+  
+  let dbPingResult = null;
+  let dbError = null;
+  
+  if (isConnected) {
+    try {
+      const startTime = Date.now();
+      await mongoose.connection.db.admin().ping();
+      const pingTime = Date.now() - startTime;
+      dbPingResult = { success: true, responseTime: `${pingTime}ms` };
+    } catch (error) {
+      dbPingResult = { success: false, error: error.message };
+      dbError = error.message;
+    }
+  }
+  
+  const healthStatus = {
+    status: isConnected && (!dbPingResult || dbPingResult.success) ? 'healthy' : 'unhealthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    mongodb: {
+      connected: isConnected,
+      database: dbName,
+      readyState: mongoose.connection.readyState,
+      ping: dbPingResult,
+      error: dbError
+    }
+  };
+  
+  const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(healthStatus);
 });
 
 // Root route for Render homepage
@@ -188,22 +227,26 @@ process.on('SIGINT', async () => {
 // Start Server
 connectDB().then((conn) => {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+  const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for Render
+  
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 Server running on ${HOST}:${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     if (conn) {
       console.log(`✅ Database: Connected to MongoDB`);
     } else {
       console.log(`⚠️  Database: Not connected - some features may not work`);
     }
-    console.log(`📊 Health check available at: http://localhost:${PORT}/api/health`);
+    console.log(`📊 Health check available at: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/api/health`);
   });
 }).catch(err => {
   console.error('❌ Failed to start server:', err);
   if (process.env.NODE_ENV === 'production') {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`🚀 Server started on port ${PORT} (without database)`);
+    const HOST = process.env.HOST || '0.0.0.0';
+    
+    app.listen(PORT, HOST, () => {
+      console.log(`🚀 Server started on ${HOST}:${PORT} (without database)`);
     });
   } else {
     process.exit(1);

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: meditech-backend
+    runtime: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false  # This should be set in Render dashboard
+      - key: JWT_SECRET
+        sync: false  # This should be set in Render dashboard
+      - key: FRONTEND_URL
+        sync: false  # This should be set in Render dashboard
+    healthCheckPath: /health
+    plan: free  # Change to starter or professional as needed

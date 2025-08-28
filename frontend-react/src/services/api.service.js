@@ -6,8 +6,11 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 console.log('API Service Initialization:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- REACT_APP_ENV:', process.env.REACT_APP_ENV);
 console.log('- API_URL:', API_URL);
 console.log('- BACKEND_URL:', BACKEND_URL);
+console.log('- All REACT_APP env vars:', Object.keys(process.env).filter(key => key.startsWith('REACT_APP_')));
 
 // Create an Axios instance with defaults
 const API = axios.create({

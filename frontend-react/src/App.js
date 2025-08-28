@@ -31,8 +31,6 @@ import PendingUpdates from './pages/PendingUpdates';
 import PatientView from './pages/PatientView';
 import AdminPanel from './pages/AdminPanel';
 
-// Diagnostic Tools
-import ConnectionTest from './components/ConnectionTest';
 
 // Route Guards
 import PrivateRoute from 'components/routes/PrivateRoute';
@@ -91,9 +89,6 @@ const AppContent = () => {
         <Route path="/faq" element={<FAQ />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/admin" element={<AdminPanel />} />
-        
-        {/* Diagnostic Routes */}
-        <Route path="/diagnostics/connection" element={<ConnectionTest />} />
       </Route>
       
       {/* 404 Route */}
