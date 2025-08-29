@@ -72,6 +72,11 @@ app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Serve React static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend-react/build')));
+}
+
 // API status route
 app.get('/api', (req, res) => {
   res.json({ message: '✅ MediTech API is running' });
@@ -115,10 +120,18 @@ app.get('/health', async (req, res) => {
   res.status(statusCode).json(healthStatus);
 });
 
-// Root route for Render homepage
-app.get('/', (req, res) => {
-  res.send('🚀 MediTech Backend is running! Visit /api for API routes.');
-});
+// Root route and SPA fallback for production
+if (process.env.NODE_ENV === 'production') {
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend-react/build/index.html'));
+  });
+} else {
+  // Development root route
+  app.get('/', (req, res) => {
+    res.send('🚀 MediTech Backend is running! Visit /api for API routes.');
+  });
+}
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI;

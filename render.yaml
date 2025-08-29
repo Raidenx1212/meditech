@@ -1,8 +1,10 @@
 services:
   - type: web
-    name: meditech-backend
+    name: meditech-fullstack
     runtime: node
-    buildCommand: cd backend && npm install
+    buildCommand: |
+      cd backend && npm install
+      cd ../frontend-react && npm install && npm run build
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
