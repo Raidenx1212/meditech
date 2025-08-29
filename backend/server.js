@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
+const bodyParser = require('body-parser');
 const path = require('path');
 
 // Import Routes
@@ -23,39 +24,11 @@ const app = express();
 
 // Security & Middleware
 app.use(helmet());
-// CORS configuration for both development and production
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://meditech-one.vercel.app",
-  "https://meditech-healthcare.vercel.app",
-  "https://meditech-frontend.vercel.app",
-  "https://meditech-blockchain.vercel.app",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, etc.)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    // For development, allow any localhost origin
-    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
-      return callback(null, true);
-    }
-    
-    console.log('CORS blocked origin:', origin);
-    const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-    return callback(new Error(msg), false);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  origin: process.env.FRONTEND_URL, // ✅ Allow frontend
+  credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -72,68 +45,28 @@ app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Serve React static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend-react/build')));
-}
-
 // API status route
 app.get('/api', (req, res) => {
   res.json({ message: '✅ MediTech API is running' });
 });
 
-// Health endpoint for deployment services (root level)
-app.get('/health', async (req, res) => {
-  const mongoose = require('mongoose');
-  const isConnected = mongoose.connection.readyState === 1;
-  const dbName = isConnected ? mongoose.connection.db.databaseName : 'not connected';
-  
-  let dbPingResult = null;
-  let dbError = null;
-  
-  if (isConnected) {
-    try {
-      const startTime = Date.now();
-      await mongoose.connection.db.admin().ping();
-      const pingTime = Date.now() - startTime;
-      dbPingResult = { success: true, responseTime: `${pingTime}ms` };
-    } catch (error) {
-      dbPingResult = { success: false, error: error.message };
-      dbError = error.message;
-    }
-  }
-  
-  const healthStatus = {
-    status: isConnected && (!dbPingResult || dbPingResult.success) ? 'healthy' : 'unhealthy',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    mongodb: {
-      connected: isConnected,
-      database: dbName,
-      readyState: mongoose.connection.readyState,
-      ping: dbPingResult,
-      error: dbError
-    }
-  };
-  
-  const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
-  res.status(statusCode).json(healthStatus);
+// Root route for backend only
+app.get('/', (req, res) => {
+  res.send('🚀 MediTech Backend is running! Visit /api for API routes.');
 });
 
-// Root route and SPA fallback for production
-if (process.env.NODE_ENV === 'production') {
-  // Handle React routing, return all requests to React app
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend-react/build/index.html'));
-  });
-} else {
-  // Development root route
-  app.get('/', (req, res) => {
-    res.send('🚀 MediTech Backend is running! Visit /api for API routes.');
+// -------------------- Serve React frontend in production --------------------
+if (process.env.NODE_ENV === "production") {
+  // Serve static files from the React app build folder
+  app.use(express.static(path.join(__dirname, "../frontend-react/build")));
+
+  // Catch-all: send index.html for any non-API route
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend-react/build", "index.html"));
   });
 }
 
-// MongoDB Connection
+// -------------------- MongoDB Connection --------------------
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
@@ -148,15 +81,9 @@ const connectDB = async () => {
 
     let cleanURI = MONGODB_URI;
     
-    // Ensure we're using the correct database name
     if (!cleanURI.includes('/meditech') && !cleanURI.includes('/test')) {
-      // If no database specified, add meditech before query parameters
-      if (cleanURI.includes('?')) {
-        cleanURI = cleanURI.replace('/?', '/meditech?');
-      } else {
-        cleanURI = cleanURI + (cleanURI.endsWith('/') ? 'meditech' : '/meditech');
-      }
-      console.log('📝 No database specified, defaulting to meditech database');
+      cleanURI = cleanURI.replace(/\/([^/?]*)(\?|$)/, '/meditech$2');
+      console.log('📝 No database specified, defaulting to /meditech');
     }
     
     cleanURI = cleanURI.replace(/&appName=[^&]*/, '');
@@ -164,27 +91,23 @@ const connectDB = async () => {
     console.log('🔗 Final MongoDB URI (sanitized):', cleanURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
 
     const conn = await mongoose.connect(cleanURI, {
-      serverSelectionTimeoutMS: 60000, // Increased to 60 seconds for Render
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 60000,
-      connectTimeoutMS: 60000, // Add explicit connect timeout
       maxPoolSize: 10,
-      minPoolSize: 1, // Reduced minimum for cloud deployment
+      minPoolSize: 2,
       retryWrites: true,
-      w: 'majority',
-      bufferCommands: true,
-      heartbeatFrequencyMS: 10000, // More frequent heartbeat
-      maxIdleTimeMS: 30000 // Close connections after 30s idle
+      w: 'majority'
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database: ${conn.connection.db.databaseName}`);
     console.log(`🔌 Connection State: ${conn.connection.readyState}`);
     
-    // Test the connection with a simple operation
     await conn.connection.db.admin().ping();
     console.log('🏓 Database ping successful');
     
-    // List collections to verify database access
     const collections = await conn.connection.db.listCollections().toArray();
     console.log('📚 Available collections:', collections.map(c => c.name));
     
@@ -197,7 +120,6 @@ const connectDB = async () => {
       stack: error.stack
     });
     
-    // Provide specific error messages for common issues
     if (error.name === 'MongoServerSelectionError') {
       console.error('🚨 Network/Connection Issue: Check MongoDB Atlas Network Access');
     } else if (error.name === 'MongoParseError') {
@@ -217,15 +139,13 @@ const connectDB = async () => {
   }
 };
 
-// Add connection event listeners
+// Mongo event listeners
 mongoose.connection.on('connected', () => {
   console.log('✅ Mongoose connected to MongoDB');
 });
-
 mongoose.connection.on('error', (err) => {
   console.error('❌ Mongoose connection error:', err);
 });
-
 mongoose.connection.on('disconnected', () => {
   console.log('⚠️  Mongoose disconnected from MongoDB');
 });
@@ -237,29 +157,25 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Start Server
+// -------------------- Start Server --------------------
 connectDB().then((conn) => {
   const PORT = process.env.PORT || 5000;
-  const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for Render
-  
-  app.listen(PORT, HOST, () => {
-    console.log(`🚀 Server running on ${HOST}:${PORT}`);
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     if (conn) {
       console.log(`✅ Database: Connected to MongoDB`);
     } else {
       console.log(`⚠️  Database: Not connected - some features may not work`);
     }
-    console.log(`📊 Health check available at: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/api/health`);
+    console.log(`📊 Health check available at: http://localhost:${PORT}/api/health`);
   });
 }).catch(err => {
   console.error('❌ Failed to start server:', err);
   if (process.env.NODE_ENV === 'production') {
     const PORT = process.env.PORT || 5000;
-    const HOST = process.env.HOST || '0.0.0.0';
-    
-    app.listen(PORT, HOST, () => {
-      console.log(`🚀 Server started on ${HOST}:${PORT} (without database)`);
+    app.listen(PORT, () => {
+      console.log(`🚀 Server started on port ${PORT} (without database)`);
     });
   } else {
     process.exit(1);
